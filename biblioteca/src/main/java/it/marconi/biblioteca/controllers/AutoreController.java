@@ -1,9 +1,7 @@
 package it.marconi.biblioteca.controllers;
 
 import java.util.List;
-import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,66 +14,61 @@ import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Operation;
 import it.marconi.biblioteca.domain.AutoreDTO;
 import it.marconi.biblioteca.domain.LibroDTO;
+import it.marconi.biblioteca.responses.APIResponse;
 import it.marconi.biblioteca.services.AutoreService;
 import it.marconi.biblioteca.services.LibroService;
 import jakarta.validation.Valid;
 
+/**
+ * Tutti gli endpoint restituiscono un {@link APIResponse}.
+ * I casi di errore (404, 400, ...) sono gestiti dal GlobalExceptionHandler:
+ * qui non c'è nessun try-catch.
+ */
 @RestController
 @RequestMapping("/autori")
 public class AutoreController {
-    
-    @Autowired
-    LibroService libroService;
 
-    @Autowired
-    AutoreService autoreService;
+    private final LibroService libroService;
+    private final AutoreService autoreService;
+
+    public AutoreController(LibroService libroService, AutoreService autoreService) {
+        this.libroService = libroService;
+        this.autoreService = autoreService;
+    }
 
     @GetMapping
     @Operation(summary = "Recupera tutti gli autori")
-    public List<AutoreDTO> getAll() {
-        return autoreService.findAll();
+    public ResponseEntity<APIResponse<List<AutoreDTO>>> getAll() {
+
+        return ResponseEntity.ok(APIResponse.success(autoreService.findAll()));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Cerca un autore dato il suo ID")
-    public ResponseEntity<AutoreDTO> getAutore(@PathVariable Integer id) {
+    public ResponseEntity<APIResponse<AutoreDTO>> getAutore(@PathVariable Integer id) {
 
-        Optional<AutoreDTO> autore = autoreService.getById(id);
-
-        if (autore.isPresent())
-            return ResponseEntity.of(autore);
-        else
-            return ResponseEntity.notFound().build();
-
-        // return autoreService.getById(id).
-        //     orElseThrow(() -> new RuntimeException("Autore non trovato"));
+        return ResponseEntity.ok(APIResponse.success(autoreService.getById(id)));
     }
 
     @GetMapping("/{id}/libri")
     @Operation(summary = "Recupera tutti i libri di un dato autore")
-    public List<LibroDTO> getLibriByAutore(@PathVariable Integer id) {
-        
-        return libroService.getByAutoreId(id);
+    public ResponseEntity<APIResponse<List<LibroDTO>>> getLibriByAutore(@PathVariable Integer id) {
+
+        return ResponseEntity.ok(APIResponse.success(libroService.getByAutoreId(id)));
     }
 
     @PostMapping("/add")
     @Operation(summary = "Aggiunge un nuovo autore")
-    public ResponseEntity<AutoreDTO> addAutore(@Valid @RequestBody AutoreDTO autore) {
+    public ResponseEntity<APIResponse<AutoreDTO>> addAutore(@Valid @RequestBody AutoreDTO autore) {
 
-        AutoreDTO salvato = autoreService.save(autore);
-
-        return ResponseEntity.ok(salvato);
+        return ResponseEntity.ok(APIResponse.success(autoreService.save(autore)));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Rimuove un autore dal database, e anche tutti i suoi libri")
-    public ResponseEntity<String> deleteAutore(@PathVariable Integer id) {
+    public ResponseEntity<APIResponse<Void>> deleteAutore(@PathVariable Integer id) {
 
-        boolean deleted = autoreService.deleteById(id);
-
-        if (deleted)
-            return ResponseEntity.ok("Autore eliminato correttamente!");
-        else
-            return ResponseEntity.notFound().build();
+        autoreService.deleteById(id);
+        return ResponseEntity.ok(APIResponse.success(null, "Autore eliminato correttamente"));
     }
 }
